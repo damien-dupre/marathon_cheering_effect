@@ -53,6 +53,7 @@ library(here)
 library(geosphere) # claculate gps distance
 # result plots
 library(ggplot2)
+library(ggridges)
 library(leaflet) # map widget
 library(mapview) # map snapshot
 library(png)
@@ -130,7 +131,8 @@ distance_event <- dublin_marathon_event %>%
   dplyr::rowwise() %>%
   dplyr::do(get_distance_event(.)) %>%
   as.data.frame() %>%
-  dplyr::distinct(.keep_all = TRUE) # removes possible duplicates if cheering zones are too close (identical GPS coordinate from marathoon route)
+  dplyr::distinct(.keep_all = TRUE) %>%
+  tibble::rowid_to_column("n_event")# removes possible duplicates if cheering zones are too close (identical GPS coordinate from marathoon route)
 ```
 
 ```{r cheering-zones-map, fig.cap="GPS localisation of Cheering Zones on the marathon route."}
@@ -219,7 +221,8 @@ event_athlete <- event_athlete %>%
     event == "before" ~ -1,
     is.na(event) ~ 0
   )) %>%
-  dplyr::mutate(before_after = as.factor(before_after))
+  dplyr::mutate(before_after = as.factor(before_after)) %>%
+  dplyr::mutate(n_event = ifelse(is.na(n_event),0,n_event))
 
 
 # values given by https://www.verywellfit.com/walking-and-running-pace-and-speed-calculator-3952317
@@ -244,7 +247,7 @@ res_glmtest_before_after <- papaja::apa_print(glmtest_before_after)
 
 # Results
 
-Generalized Linear Models show not only an effect of cheering zones on atheltes' pace (`r res_glmtest_ischeering$statistic$is_cheering1`) but also an effect of the localisation of these cheering zones (`r res_glmtest_ischeering$statistic$is_cheering1_distance`) see Table \@ref(tab:table_ischeering). 
+Generalized Linear Models show not only an effect of cheering zones on atheltes' pace (`r res_glmtest_ischeering$statistic$is_cheering1`) but also an effect of the localisation of these cheering zones (`r res_glmtest_ischeering$statistic$is_cheering1_distance`) see Table @ref(tab:table_ischeering). 
 
 ```{r table_ischeering, results="asis"}
 papaja::apa_table(
@@ -262,22 +265,42 @@ mean_group <- event_athlete %>%
   tidyr::spread(is_cheering, m) %>%
   dplyr::mutate(diff_cheering = `0`-`1`) %>%
   dplyr::mutate(effect_cheering = (diff_cheering/`0`))
+
+mean_event <- event_athlete %>%
+  dplyr::filter(pace_diff !=0) %>%
+  dplyr::group_by(n_event, hashedathleteid) %>%
+  dplyr::summarise(m = mean(pace_diff)) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(n_event = paste0("CZ_", n_event)) %>%
+  tidyr::spread(n_event, m) %>%
+  dplyr::mutate_at(vars(c(CZ_1,CZ_2,CZ_3,CZ_4,CZ_5,CZ_6,CZ_7,CZ_8)), funs((CZ_0-.)/CZ_0)) %>%
+  tidyr::gather(event, effect_cheering, c(CZ_1,CZ_2,CZ_3,CZ_4,CZ_5,CZ_6,CZ_7,CZ_8)) %>%
+  dplyr::mutate(n_event = as.numeric(gsub("CZ_","",event)))
+
+lm_effect_cheering <- papaja::apa_print(lm(effect_cheering ~ n_event, mean_event))
 ```
 
-Athletes tend to increase their pace by `r scales::percent(mean(mean_group$effect_cheering))` after each cheering zones on average but this effect tend to decrease along the marathon race (Figure \@ref(fig:plot-pace-gain)). 
+Athletes tend to increase their pace by `r scales::percent(mean(mean_group$effect_cheering))` after each cheering zones on average but this effect tend to decrease along the marathon race (`r lm_effect_cheering$full_result$modelfit$r2`, Figure \@ref(fig:plot-pace-gain)). 
 
 ```{r plot-pace-gain, fig.cap="Density distribution of athletes's pace gain during the Cheering Zones."}
-ggplot(mean_group, aes(x=effect_cheering)) + 
-  # geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
-  #                binwidth=.5,
-  #                colour="black", fill="white") +
-  geom_density(alpha=.2, fill="#FF6666") +
+# ggplot(mean_group, aes(x=effect_cheering)) + 
+#   # geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+#   #                binwidth=.5,
+#   #                colour="black", fill="white") +
+#   geom_density(alpha=.2, fill="#FF6666") +
+#   geom_vline(aes(xintercept=0), colour="red",linetype="dashed", size=0.5) +
+#   scale_x_continuous("'cheering effect' gain on athletes' pace",labels = scales::percent) +
+#   theme_bw()
+
+ggplot(mean_event, aes(x = effect_cheering, y = event)) +
+  geom_density_ridges(quantile_lines = TRUE, quantiles = 2,alpha=.8, fill="gray") +
   geom_vline(aes(xintercept=0), colour="red",linetype="dashed", size=0.5) +
-  scale_x_continuous("'cheering effect' gain on athletes' pace",labels = scales::percent) +
+  scale_x_continuous("'cheering effect' gain on athletes' pace",labels = scales::percent, limits= c(-0.5,0.5)) +
+  scale_y_discrete("Cheering Zones", expand = expand_scale(add = c(0.2, 1.5))) +
   theme_bw()
 ```
 
-This last result is supported by the comparison athlete's pace comparison before and after the cheering zones which is significant overall (`r res_glmtest_before_after$statistic$before_after1`) and by taken into account their localisation (`r res_glmtest_before_after$statistic$before_after1_distance`)Table \@ref(tab:table_before_after). 
+This last result is supported by the comparison athlete's pace comparison before and after the cheering zones which is significant overall (`r res_glmtest_before_after$statistic$before_after1`) and by taken into account their localisation (`r res_glmtest_before_after$statistic$before_after1_distance`)Table @ref(tab:table_before_after). 
 
 ```{r table_before_after, results="asis"}
 papaja::apa_table(
