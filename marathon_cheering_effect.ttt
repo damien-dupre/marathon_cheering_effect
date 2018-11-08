@@ -1,0 +1,40 @@
+\begin{table*}[hbt]
+\ifnextchar[{\eatarg}{}
+[tbp]
+\begin{center}
+\begin{threeparttable}
+\caption{\label{tab:table_ischeering}Effect of Cheering Zones according to marathon's route on athletes pace.}
+\begin{tabular}{lllll}
+\toprule
+Predictor & \multicolumn{1}{c}{$b$} & \multicolumn{1}{c}{95\% CI} & \multicolumn{1}{c}{$t(5156697)$} & \multicolumn{1}{c}{$p$}\\
+\midrule
+Intercept & 5.15 & $[5.15$, $5.16]$ & 3,377.53 & < .001\\
+Is cheering1 & -0.13 & $[-0.23$, $-0.04]$ & -2.79 & .005\\
+Distance & 0.00 & $[0.00$, $0.00]$ & 481.06 & < .001\\
+Is cheering1 $\times$ Distance & 0.00 & $[0.00$, $0.00]$ & -3.84 & < .001\\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{center}
+\end{table*}
+\begin{table*}[hbt]
+\ifnextchar[{\eatarg}{}
+[tbp]
+\begin{center}
+\begin{threeparttable}
+\caption{\label{tab:table_before_after}Difference before and after Cheering Zones according to marathon's route on athletes pace.}
+\begin{tabular}{lllll}
+\toprule
+Predictor & \multicolumn{1}{c}{$b$} & \multicolumn{1}{c}{95\% CI} & \multicolumn{1}{c}{$t(5156695)$} & \multicolumn{1}{c}{$p$}\\
+\midrule
+Intercept & 5.03 & $[5.02$, $5.04]$ & 1,148.40 & < .001\\
+Before after0 & 0.13 & $[0.12$, $0.14]$ & 27.03 & < .001\\
+Before after1 & 0.21 & $[0.20$, $0.22]$ & 33.44 & < .001\\
+Distance & 0.00 & $[0.00$, $0.00]$ & 192.03 & < .001\\
+Before after0 $\times$ Distance & 0.00 & $[0.00$, $0.00]$ & -5.39 & < .001\\
+Before after1 $\times$ Distance & 0.00 & $[0.00$, $0.00]$ & -35.18 & < .001\\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{center}
+\end{table*}

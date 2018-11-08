@@ -1,0 +1,20 @@
+\begin{figure*}[hbt]
+\ifnextchar[{\eatarg}{}
+
+
+{\centering \includegraphics{marathon_cheering_effect_files/figure-latex/cheering-zones-map-1}
+
+}
+
+\caption{GPS localisation of Cheering Zones on the marathon route.}\label{fig:cheering-zones-map}
+\end{figure*}
+\begin{figure*}[hbt]
+\ifnextchar[{\eatarg}{}
+
+
+{\centering \includegraphics{marathon_cheering_effect_files/figure-latex/plot-pace-gain-1}
+
+}
+
+\caption{Density distribution of athletes's pace gain during the Cheering Zones.}\label{fig:plot-pace-gain}
+\end{figure*}

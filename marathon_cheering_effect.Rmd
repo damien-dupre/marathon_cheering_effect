@@ -1,0 +1,367 @@
+---
+title             : "You'll never run alone. Effect of 'cheering zones' on athlete performance in marathon races."
+shorttitle        : "Effect of 'cheering zones' on athlete performance in marathon races"
+
+author: 
+  - name: "Damien Dupré"
+    email: "damien.dupre@ucd.ie"
+    affiliation: "1"
+    corresponding : yes    # Define only one corresponding author
+    address       : "The Insight Centre for Data Analytics, Belfield, Dublin 4"
+  - name: "Aonghus Lawlor"
+    email: "aonghus.lawlor@ucd.ie"
+    affiliation: "1"
+  - name: "Barry Smyth"
+    email: "barry.smyth@ucd.ie"
+    affiliation: "1"
+
+affiliation:
+  - id            : "1"
+    institution   : "University College Dublin"
+
+author_note: |
+
+abstract: |
+  Enter abstract here. Each new line herein must be indented, like this line.
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["r-references.bib"]
+
+figsintext        : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+lineno            : yes
+mask              : no
+
+class             : "man"
+output            : papaja::apa6_pdf
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed, message = FALSE, warning = FALSE, error = FALSE, echo = FALSE, fig.align="center")
+# data wrangling
+library(plyr)
+library(data.table)
+library(tidyverse)
+# setup
+library(papaja)
+library(here)
+# statistical modeling
+library(geosphere) # claculate gps distance
+# result plots
+library(ggplot2)
+library(leaflet) # map widget
+library(mapview) # map snapshot
+library(png)
+library(grid)
+library(gridExtra)
+```
+
+```{r analysis_preferences}
+set.seed(123)# Seed for random number generation
+options(scipen = 999) #disable sci number format
+# user defined functions
+convert_array <- function(x){
+  as.array(lapply(strsplit(substr(x,2,nchar(x)-1),",",fixed=TRUE),as.numeric))
+}
+# load data
+dublin_2015_marathons_raw <- readRDS(here::here("marathon_cheering_data/dublin_2015_marathons_raw.rds")) %>%
+  dplyr::filter(totaldistance > 40000) %>%
+  dplyr::distinct(hashedathleteid, .keep_all = TRUE)
+#
+dublin_2015_marathons_raw$distance_conv <- convert_array(dublin_2015_marathons_raw$distance)
+dublin_2015_marathons_raw$time_conv <- convert_array(dublin_2015_marathons_raw$time)
+```
+
+# Introduction
+
+Although the emotion literature advocates for an influence of positive emotions on sports performance [@mccarthy2011positive; @vast2010emotions], quantifying this influence remains a challenge. Among remarkable athletic performances, marathon races are a relevant example of this influence. The establishment of "cheering zones" during marathon races shows how positive emotions and social support are important for athletes to enhance their performances [@buman2008experiences]. Even if studies have identified the role of positive emotion on athletes' perfomance from self-report [@shipway2013organisations], our aim is to quantify the behavioural impact of these cheering zones on athletes pace during marathon races.
+
+# Methods
+
+## Participants
+
+In collaboration with Strava Inc. (athlete monitoring application) we analysed the data of `r nrow(dublin_2015_marathons_raw)` athletes who have finished the Dublin marathon in 2015. By analyzing their GPS information the Strava app gives feedback to athletes about race distance, duration and elevation in real time. From distance and duration time series, the Strava app is calculating the evolution of athletes' pace (min/km) during the marathon. We compared athletes' pace before, during and after the cheering zones in order to identify the influence of positive emotion and social support on athletes' performance.
+
+## Cheering zones
+
+```{r add-event-to-marathon-route}
+# evaluate distance from marathon route
+dublin_marathon_route <- read.csv(here::here("marathon_cheering_data/dublin_marathon_route.csv")) %>%
+  dplyr::arrange(time) %>%
+  dplyr::select(-time, -element)
+#
+distance_array <- NULL
+for(i in 2:nrow(dublin_marathon_route)){
+  DirectDistance <- as.numeric(geosphere::distm(c(dublin_marathon_route$lon[i-1],dublin_marathon_route$lat[i-1]),c(lon2=dublin_marathon_route$lon[i],lat2=dublin_marathon_route$lat[i]), fun = distHaversine))
+  #To be more accurate, we also take into account difference in altitude between the points
+  # AltitudeChange <- abs(z[i]-z[i-1])
+  # if(AltitudeChange!=0){
+  #   flight[i] <- sqrt(DirectDistance^2+AltitudeChange^2)
+  # } else {
+  #   flight[i] <- DirectDistance
+  # } 
+  distance_array <- c(distance_array,DirectDistance)
+}
+dublin_marathon_route <- dublin_marathon_route %>%
+  dplyr::mutate(distance = c(0,distance_array))  %>%
+  dplyr::mutate(distance = cumsum(distance)) %>%
+  dplyr::distinct(distance,.keep_all = TRUE) %>%
+  dplyr::filter(distance < 42195)
+# attribuate new gps coordinates matching with marathon route points
+dublin_marathon_event <- read.csv(here::here("marathon_cheering_data/dublin_marathon_event.csv")) %>%
+  dplyr::select(-elevation, -time) %>%
+  dplyr::filter(event=="cheering") %>%
+  dplyr::mutate(event = as.character(event))
+#
+get_distance_event <- function(df){
+  dublin_marathon_route %>%
+    dplyr::mutate(abs_diff_lat = abs(lat - df[["lat"]])) %>% # Lat difference between Event and all the marathon route
+    dplyr::mutate(abs_diff_lon = abs(lon - df[["lon"]])) %>% # Lon difference between Event and all the marathon route
+    dplyr::mutate(closest_lat_lon = abs_diff_lat+abs_diff_lon) %>% # closest lat/lon from marathon route
+    dplyr::top_n(-1,closest_lat_lon) %>% # filter closest lat/lon from marathon route (min_rank)
+    dplyr::select(distance,lat,lon) %>%
+    dplyr::mutate(event=df[["event"]])
+}
+distance_event <- dublin_marathon_event %>% 
+  dplyr::rowwise() %>%
+  dplyr::do(get_distance_event(.)) %>%
+  as.data.frame() %>%
+  dplyr::distinct(.keep_all = TRUE) # removes possible duplicates if cheering zones are too close (identical GPS coordinate from marathoon route)
+```
+
+```{r cheering-zones-map, fig.cap="GPS localisation of Cheering Zones on the marathon route."}
+cheering_zones_map <- leaflet() %>%
+  addTiles() %>%  # Add default OpenStreetMap map tiles
+  addCircleMarkers(lng=dublin_marathon_route$lon, lat=dublin_marathon_route$lat, radius = 1) %>%
+  addMarkers(lng=dublin_marathon_event$lon, lat=dublin_marathon_event$lat, label = dublin_marathon_event$event)
+mapview::mapshot(cheering_zones_map, file = "image/cheering_zones_map.png")
+#
+grid.arrange(rasterGrob(as.raster(readPNG("image/cheering_zones_map.png")), interpolate = FALSE))
+```
+
+Along the Dublin marathon 2015, eight cheering zones were created (Figure \@ref(fig:cheering-zones-map)). for the purpose of our analysis, athletes' pace were analysed 1000m before and 1000m after each cheering zone. However because the two last cheering zones are separated by less than 1000m, the last cheering zone was not taken into account.
+
+```{r add-event-to-athlete-data}
+list_athlete <- unique(dublin_2015_marathons_raw$hashedathleteid)
+#
+event_athlete <- plyr::ldply(list_athlete, function(athlete_id){
+  #
+  # print(athlete_id)
+  #
+  raw_data <- dublin_2015_marathons_raw %>%
+    dplyr::filter(hashedathleteid == athlete_id)
+  #
+  long_data <- data.frame(
+    hashedathleteid = raw_data$hashedathleteid,
+    startlatapprox = raw_data$startlatapprox,
+    startlngapprox = raw_data$startlngapprox,
+    startdatelocal = raw_data$startdatelocal, 
+    time = unlist(raw_data$time_conv), 
+    distance = unlist(raw_data$distance_conv)
+  )
+  #
+  long_data <- long_data %>%
+    dplyr::mutate(timestamp = startdatelocal + time) %>%
+    dplyr::mutate(pace_diff = c(NA,(1000.0/60)*diff(time)/diff(distance))) %>%
+    dplyr::mutate(pace_diff = ifelse(pace_diff>25,25,pace_diff)) %>%  # remove artefact of pace too low
+    dplyr::distinct(distance, .keep_all = TRUE) %>%
+    dplyr::filter(distance < 42195 & distance != 0) %>%
+    dplyr::select(distance, pace_diff)
+  #
+  # dplyr::mutate(pace_range = cut(pace_diff,
+  #                                breaks = c(0,7.45,9.32,12.43,25),rigth=FALSE,
+  #                                labels = c("Running", "Jogging","Brisk walking","Easy walking")))
+  #
+  distance_event_athlete <- distance_event %>%
+    dplyr::filter(distance < max(long_data$distance)) %>%
+    dplyr::filter(distance < 41700) # in order to evaluate a range of 1000m before and after without overlap
+  #
+  long_data <- long_data %>%
+    dplyr::full_join(distance_event_athlete, by = "distance") %>%
+    dplyr::arrange(distance)
+  #
+  long_data$pace_diff <- approx(long_data$distance,long_data$pace_diff, xout = long_data$distance)$y
+  #
+  long_data <- long_data %>%
+    dplyr::select(-lon,-lat) %>%
+    dplyr::mutate(hashedathleteid = athlete_id)
+  #
+  distance_event_range <- distance_event_athlete %>%
+    dplyr::mutate(before = distance -1000) %>%
+    dplyr::mutate(after = distance +1000)
+  #
+  before_cheering <- setDT(long_data)[distance %inrange% distance_event_range[, c("before","distance")]] %>%
+    dplyr::filter(is.na(event)) %>%
+    dplyr::mutate(event = "before")
+  id <- match(long_data$distance, before_cheering$distance, nomatch = 0L)
+  long_data$event[id != 0] <- before_cheering$event[id]
+  #
+  after_cheering <- setDT(long_data)[distance %inrange% distance_event_range[, c("distance","after")]] %>%
+    dplyr::filter(is.na(event)) %>%
+    dplyr::mutate(event = "after")
+  id <- match(long_data$distance, after_cheering$distance, nomatch = 0L)
+  long_data$event[id != 0] <- after_cheering$event[id]
+  #
+  long_data
+})
+
+event_athlete <- event_athlete %>%
+  dplyr::mutate(is_cheering = ifelse(event == "cheering",1,0)) %>%
+  dplyr::mutate(is_cheering = ifelse(is.na(is_cheering),0,is_cheering))%>%
+  dplyr::mutate(is_cheering = as.factor(is_cheering)) %>%
+  dplyr::mutate(before_after = case_when(
+    event == "cheering" ~ 1,
+    event == "after" ~ 1,
+    event == "before" ~ -1,
+    is.na(event) ~ 0
+  )) %>%
+  dplyr::mutate(before_after = as.factor(before_after))
+
+
+# values given by https://www.verywellfit.com/walking-and-running-pace-and-speed-calculator-3952317
+# Running: Pace < 7.45 min/km (12 minutes per mile)
+# Fast walking or jogging: Pace between 7.45 and 9.32 min/km  (between 12 and 15 minutes per mile)
+# Brisk walking: Pace between 9.32 and 12.43 min/km (between 15 and 20 minutes per mile)
+# Easy walking: Pace > 12.43 min/km  (greater than 20 minutes per mile)
+
+# event_athlete <- event_athlete %>%
+#   dplyr::mutate(pace_range = cut(pace_diff,
+#                                  breaks = c(0,7.45,9.32,12.43,25),rigth=FALSE,
+#                                  labels = c("Running", "Jogging","Brisk walking","Easy walking")))
+```
+
+```{r glm-is_cheering}
+glmtest_ischeering <- glm(pace_diff~is_cheering*distance,data=event_athlete)
+res_glmtest_ischeering <- papaja::apa_print(glmtest_ischeering)
+
+glmtest_before_after <- glm(pace_diff~before_after*distance,data=event_athlete)
+res_glmtest_before_after <- papaja::apa_print(glmtest_before_after)
+```
+
+# Results
+
+Generalized Linear Models show not only an effect of cheering zones on atheltes' pace (`r res_glmtest_ischeering$statistic$is_cheering1`) but also an effect of the localisation of these cheering zones (`r res_glmtest_ischeering$statistic$is_cheering1_distance`) see Table \@ref(tab:table_ischeering). 
+
+```{r table_ischeering, results="asis"}
+papaja::apa_table(
+  res_glmtest_ischeering$table
+  , caption = "Effect of Cheering Zones according to marathon's route on athletes pace."
+  , escape = FALSE
+)
+```
+
+```{r cheering-gain}
+mean_group <- event_athlete %>%
+  dplyr::filter(pace_diff !=0) %>%
+  dplyr::group_by(is_cheering, hashedathleteid) %>%
+  dplyr::summarise(m = mean(pace_diff)) %>%
+  tidyr::spread(is_cheering, m) %>%
+  dplyr::mutate(diff_cheering = `0`-`1`) %>%
+  dplyr::mutate(effect_cheering = (diff_cheering/`0`))
+```
+
+Athletes tend to increase their pace by `r scales::percent(mean(mean_group$effect_cheering))` after each cheering zones on average but this effect tend to decrease along the marathon race (Figure \@ref(fig:plot-pace-gain)). 
+
+```{r plot-pace-gain, fig.cap="Density distribution of athletes's pace gain during the Cheering Zones."}
+ggplot(mean_group, aes(x=effect_cheering)) + 
+  # geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+  #                binwidth=.5,
+  #                colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +
+  geom_vline(aes(xintercept=0), colour="red",linetype="dashed", size=0.5) +
+  scale_x_continuous("'cheering effect' gain on athletes' pace",labels = scales::percent) +
+  theme_bw()
+```
+
+This last result is supported by the comparison athlete's pace comparison before and after the cheering zones which is significant overall (`r res_glmtest_before_after$statistic$before_after1`) and by taken into account their localisation (`r res_glmtest_before_after$statistic$before_after1_distance`)Table \@ref(tab:table_before_after). 
+
+```{r table_before_after, results="asis"}
+papaja::apa_table(
+  res_glmtest_before_after$table
+  , caption = "Difference before and after Cheering Zones according to marathon's route on athletes pace."
+  , escape = FALSE
+)
+```
+
+# Discussion
+
+Our results are supporting the theory of individual zones of optimal functioning (IZOF) for which feeling the support of others in cheering zones would helps athletes to find the motivation to sublim their performance [@hagtvet2007consistency]. Our results are supporting this idea rather than potential effect of social presence [@lombard1997heart] which would have desappeared once the athletes are out of the cheering zones [@morgado2011close].
+
+\newpage
+
+# References
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+<div id = "refs"></div>
+\endgroup
+
+```{r}
+# pace_ts <- zoo::zoo(x = dublin_ppt1$pace_diff,order.by = dublin_ppt1$distance)
+# pal <- colorFactor(palette = c("red","green"),domain = dublin_ppt1$pace_range)
+# 
+# lat_ts <- zoo::zoo(x = dublin_marathon_route$lat,order.by = dublin_marathon_route$distance)
+# lon_ts <- zoo::zoo(x = dublin_marathon_route$lon,order.by = dublin_marathon_route$distance)
+# 
+# pace_gps_adjusted <- zoo::merge.zoo(pace_ts,lat_ts,lon_ts) %>%
+#   zoo::na.approx() %>%
+#   #zoo::na.spline() %>% # possibility for cubic approximate
+#   zoo::fortify.zoo() %>%
+#   na.omit() %>% # remove artefact of pace too low
+#   dplyr::mutate(pace_range = cut(pace_ts,
+#                                  breaks = c(0,7.45,9.32,12.43,25),rigth=FALSE,
+#                                  labels = c("Running", "Jogging","Brisk walking","Easy walking")))
+# 
+# leaflet(data = pace_gps_adjusted) %>%
+#   addTiles() %>%  # Add default OpenStreetMap map tiles
+#   addCircleMarkers(
+#     lng=~lon_ts,
+#     lat=~lat_ts,
+#     radius = 2,
+#     color = ~pal(pace_range),
+#     label = paste("Pace Type =", pace_gps_adjusted$pace_range,"(",round(pace_gps_adjusted$pace_ts,2),"min/km)")
+#     )%>%
+#   addMarkers(
+#     lng=dublin_marathon_event$lon, 
+#     lat=dublin_marathon_event$lat, 
+#     label = dublin_marathon_event$event
+#     ) %>%
+#   addCircleMarkers(
+#     lng=dublin_ppt1$startlngapprox[1], 
+#     lat=dublin_ppt1$startlatapprox[1], 
+#     label = "Indiv Start",
+#     color = "blue",
+#     radius = 10
+#     ) %>%
+#   addLegend(
+#     "bottomright", 
+#     pal = pal, 
+#     values = ~pace_range,
+#     title = "Pace Type",
+#     #labFormat = labelFormat(suffix = "min/km"),
+#     opacity = 1)
+
+# ##########################################################################################
+# library(mgcv)
+# gamtest <- gam(pace_diff ~ s(distance, by = is_cheering), data = test4,method="REML",correlation = corAR1())
+# summary(gamtest)
+# plot(gamtest)
+# 
+# gamtest <- gam(pace_diff ~ s(distance) + is_cheering, data = test4,method="REML",correlation = corAR1())
+# summary(gamtest)
+# plot(gamtest)
+# 
+# ##########################################################################################
+# library(bgeva)
+# out <- bgeva(is_cheering ~ s(pace_diff), data = test4)
+# bg.checks(out)
+# summary(out)
+# plot(out,scale=0,pages=1,shade=TRUE)
+```
+

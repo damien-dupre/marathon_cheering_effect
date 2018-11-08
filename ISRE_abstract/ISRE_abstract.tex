@@ -1,0 +1,145 @@
+\documentclass[]{elsarticle} %review=doublespace preprint=single 5p=2 column
+%%% Begin My package additions %%%%%%%%%%%%%%%%%%%
+\usepackage[hyphens]{url}
+
+  \journal{ISRE 2019} % Sets Journal name
+
+
+\usepackage{lineno} % add
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\bibliographystyle{elsarticle-harv}
+\biboptions{sort&compress} % For natbib
+\usepackage{graphicx}
+\usepackage{booktabs} % book-quality tables
+%%%%%%%%%%%%%%%% end my additions to header
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \usepackage{fontspec}
+  \ifxetex
+    \usepackage{xltxtra,xunicode}
+  \fi
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \newcommand{\euro}{€}
+\fi
+% use microtype if available
+\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+\fi
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={},
+            pdftitle={You'll never run alone. Effect of cheering zones on athlete performance in marathon races.},
+            colorlinks=false,
+            urlcolor=blue,
+            linkcolor=magenta,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+
+\setcounter{secnumdepth}{0}
+% Pandoc toggle for numbering sections (defaults to be off)
+\setcounter{secnumdepth}{0}
+% Pandoc header
+
+
+
+\begin{document}
+\begin{frontmatter}
+
+  \title{You'll never run alone. Effect of `cheering zones' on athlete
+performance in marathon races.}
+    \author[University College Dublin]{Damien Dupré\corref{c1}}
+   \ead{damien.dupre@ucd.ie} 
+   \cortext[c1]{Corresponding Author}
+    \author[University College Dublin]{Aonghus Lawlor}
+   \ead{aonghus.lawlor@ucd.ie} 
+  
+    \author[University College Dublin]{Barry Smyth}
+   \ead{barry.smyth@ucd.ie} 
+  
+      \address[University College Dublin]{The Insight Centre for Data Analytics, Belfield, Dublin 4}
+  
+  \begin{abstract}
+  
+  \end{abstract}
+  
+ \end{frontmatter}
+
+Although the emotion literature advocates for an influence of positive
+emotions on sports performance (McCarthy 2011; Vast, Young, and Thomas
+2010), quantifying this influence remains a challenge. Among remarkable
+athletic performances, marathon races are a relevant example of this
+influence. The establishment of ``cheering zones'' during marathon races
+shows how positive emotions and social support are important for
+athletes to enhance their performances (Buman et al. 2008). Our aim is
+to quantify the behavioural impact of these cheering zones on athletes
+pace during marathon races.
+
+In collaboration with Strava Inc. (athlete monitoring application) we
+analysed the data of 664 athletes who have finished the Dublin marathon
+in 2014. By analyzing their GPS information the Strava app is
+calculating the evolution of athletes' pace (min/km) during the
+marathon. We compared athletes' pace before, during and after the
+cheering zones in order to identify the influence of positive emotion
+and social support on athletes' performance.
+
+Generalized Linear Models show not only an effect of cheering zones on
+atheltes' pace (\emph{t} = -2.79, \emph{p} \textless{}0.005) but also an
+effect of the localisation of these cheering zones (\emph{t} = -3.84,
+\emph{p} \textless{}0.001). Athletes tend to increase their pace by
+0.743\% after each cheering zones on average but this effect tend to
+decrease along the marathon race. This last result is supported by the
+comparison athlete's pace comparison before and after the cheering zones
+which is significant only by taken into account their localisation
+(\emph{t} = -35.18, \emph{p} \textless{}0.001).
+
+Our results are supporting the theory of individual zones of optimal
+functioning (IZOF) for which feeling the support of others in cheering
+zones would helps athletes to find the motivation to sublim their
+performance (Hagtvet and Hanin 2007).
+
+\section*{References}\label{references}
+\addcontentsline{toc}{section}{References}
+
+\hypertarget{refs}{}
+\hypertarget{ref-buman2008experiences}{}
+Buman, Matthew P, Jens W Omli, Peter R Giacobbi Jr, and Britton W
+Brewer. 2008. ``Experiences and Coping Responses of `Hitting the Wall'
+for Recreational Marathon Runners.'' \emph{Journal of Applied Sport
+Psychology} 20 (3). Taylor \& Francis: 282--300.
+
+\hypertarget{ref-hagtvet2007consistency}{}
+Hagtvet, Knut A, and Yuri L Hanin. 2007. ``Consistency of
+Performance-Related Emotions in Elite Athletes: Generalizability Theory
+Applied to the Izof Model.'' \emph{Psychology of Sport and Exercise} 8
+(1). Elsevier: 47--72.
+
+\hypertarget{ref-mccarthy2011positive}{}
+McCarthy, Paul J. 2011. ``Positive Emotion in Sport Performance: Current
+Status and Future Directions.'' \emph{International Review of Sport and
+Exercise Psychology} 4 (1). Taylor \& Francis: 50--69.
+
+\hypertarget{ref-vast2010emotions}{}
+Vast, Robyn Louise, Robyn Louise Young, and Patrick Robert Thomas. 2010.
+``Emotions in Sport: Perceived Effects on Attention, Concentration, and
+Performance.'' \emph{Australian Psychologist} 45 (2). Wiley Online
+Library: 132--40.
+
+\end{document}
+
+
